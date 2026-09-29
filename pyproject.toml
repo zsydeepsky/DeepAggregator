@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = ["model-cache", "workspace", "docker_image", ".venv"]
+
+[tool.ruff.lint]
+select = ["F", "E4", "E7", "E9"]  # pyflakes + 关键 pycodestyle：只抓错误，不做风格执法
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # 公共接口重导出
+"app/main.py" = ["E402"]  # 设置侧效应要求延后导入

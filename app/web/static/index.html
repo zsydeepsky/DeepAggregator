@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>DeepAggregator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%234B3FE3'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css?v=20261003k">
+</head>
+<body>
+<header class="topbar">
+  <button id="sidebarBtn" class="ghost sidebar-toggle" title="订阅源列表">☰</button>
+  <span class="logo">Deep<span>Aggregator</span></span>
+  <select id="wsSelect" title="当前工作区"></select>
+  <button id="wsAddBtn" class="ghost" title="新建工作区">＋区</button>
+  <span id="stats" class="stats"></span>
+  <button id="aiStackBtn" class="ghost" title="AI 阅读助手">✦ AI</button>
+  <div class="ai-menu-wrap" id="transMenuWrap">
+    <button id="transBtn" class="ghost" title="翻译">🌐 翻译</button>
+    <div id="transMenu" class="trans-panel hidden">
+      <div class="trans-panel-head">
+        <span>翻译</span>
+        <button id="transMenuClose" class="ghost">✕</button>
+      </div>
+      <div class="trans-panel-body">
+        <div id="transTierList"></div>
+        <div class="trans-sec-h">目标语言</div>
+        <div id="transLangList" class="trans-lang-grid"></div>
+      </div>
+      <div class="trans-panel-foot">
+        <button id="transSetupBtn" class="ghost">设置</button>
+      </div>
+    </div>
+  </div>
+  <button id="mediaIndicator" class="ghost hidden" title="媒体正在画中画播放，点击重新弹出">▶ 媒体</button>
+  <button id="credBtn" class="ghost hidden" title="存在需要处理的登录凭据问题">❌ 凭据</button>
+  <button id="queueBtn" class="ghost hidden" title="存档队列">
+    <span id="queueSpin" class="spinner sm hidden"></span><span id="queueText"></span>
+  </button>
+  <button id="settingsBtn" class="ghost" title="设置">⚙</button>
+</header>
+<div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
+<div id="mainWrap">
+<div class="layout">
+  <aside id="sidebar" class="sidebar">
+    <ul id="sourceList" class="source-list"></ul>
+  </aside>
+  <main class="main">
+    <div class="toolbar">
+      <button id="srcFilterBtn" class="filter-chip" title="筛选来源">全部来源 ▾</button>
+      <input id="searchBox" placeholder="搜索…（留空 = 最新）">
+      <button id="clearFiltersBtn" class="clear-btn" title="清除全部筛选条件，回到默认视图">✕</button>
+      <select id="mode">
+        <option value="semantic">语义</option>
+        <option value="keyword">关键词</option>
+        <option value="hybrid">混合</option>
+      </select>
+      <button id="fUnread" class="filter-chip" title="只看未读">未读</button>
+      <button id="fBookmarked" class="filter-chip" title="只看书签"><span class="chip-bm"></span></button>
+      <button id="fStarred" class="filter-chip" title="只看星标">⭐</button>
+      <span id="notice" class="notice"></span>
+    </div>
+    <div class="feed-wrap">
+      <ul id="itemList" class="item-list"></ul>
+      <div class="pager"><button id="moreBtn" class="ghost hidden">加载更多</button></div>
+      <div id="searchOverlay" class="overlay hidden">
+        <div class="overlay-card">
+          <div class="spinner"></div>
+          <div>查询中…</div>
+          <button id="cancelSearchBtn" class="ghost">取消</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <aside id="detail" class="detail hidden"></aside>
+</div>
+<div id="srcPanel" class="src-panel-wrap hidden">
+  <div class="src-panel">
+    <div class="src-panel-head">
+      <span>选择来源</span>
+      <button id="srcPanelClose" class="ghost">✕</button>
+    </div>
+    <div id="srcTree" class="src-tree"></div>
+    <div class="src-panel-foot">
+      <button id="srcPanelCancel" class="ghost">取消</button>
+      <button id="srcPanelOk" class="primary">确认</button>
+    </div>
+  </div>
+</div>
+<div id="viewerOverlay" class="viewer hidden">
+  <div class="viewer-bar">
+    <button id="viewerPopBtn" class="ghost hidden" title="弹出悬浮播放">POP 悬浮播放</button>
+    <span class="spacer"></span>
+    <button id="viewerClose" class="ghost">✕ 关闭原文</button>
+  </div>
+  <iframe id="viewerFrame" title="原文视图"></iframe>
+</div>
+</div>
+<input type="file" id="uploadInput" class="hidden">
+<div id="credPanel" class="cred-panel hidden">
+  <div class="cred-head">需要处理的凭据问题（点击跳转设置）</div>
+  <div id="credList"></div>
+</div>
+<div id="aiStack" class="ai-stack hidden">
+  <div id="aiStackHandle" class="ai-stack-handle" title="拖动调整高度，双击收起"></div>
+  <div class="ai-stack-head">
+    <button id="aiSessionsToggle" class="ai-icon-btn" title="会话列表" aria-label="会话列表">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9.5 4v16"/></svg>
+    </button>
+    <span id="aiChatTitle" class="ai-chat-title">新对话</span>
+    <span class="ai-stack-spacer"></span>
+    <button id="aiAddListBtn" class="ai-head-pill" title="附加当前列表为上下文（随下一条消息发送一次）">＋ 列表</button>
+    <button id="aiAddItemBtn" class="ai-head-pill" title="附加当前条目为上下文：已归档则附加其文档，否则附加摘要（随下一条消息发送一次）">＋ 条目</button>
+    <div class="ai-menu-wrap">
+      <button id="aiChatMenuBtn" class="ai-icon-btn" title="更多" aria-label="聊天菜单">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      </button>
+      <div id="aiChatMenu" class="ai-menu hidden"></div>
+    </div>
+    <button id="aiStackMin" class="ai-icon-btn" title="收起" aria-label="收起">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 12h14"/></svg>
+    </button>
+    <button id="aiStackClose" class="ai-icon-btn" title="关闭" aria-label="关闭">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="ai-stack-body">
+    <aside class="ai-col ai-sessions-col" id="aiSessionsCol">
+      <div class="ai-side-head">
+        <button id="aiNewChat" class="ai-side-row" title="新对话 (Ctrl+Shift+O)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <span>新对话</span>
+        </button>
+        <div class="ai-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="aiSearch" type="text" placeholder="搜索" maxlength="200" autocomplete="off" />
+          <button id="aiSearchClear" class="ai-search-x hidden" title="清除" aria-label="清除搜索">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="aiSessionList" class="ai-session-list"></div>
+    </aside>
+    <section class="ai-col ai-chat-col">
+      <div id="aiMessages" class="ai-messages">
+        <div id="aiPlaceholder" class="ai-placeholder hidden"></div>
+      </div>
+      <div id="aiScrollBottomWrap" class="ai-scroll-wrap hidden">
+        <button id="aiScrollBottom" title="滚动到底部" aria-label="滚动到底部">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+        </button>
+      </div>
+      <div class="ai-input-area">
+        <div id="aiCtxChips" class="ai-chips"></div>
+        <div id="aiMediaChips" class="ai-chips"></div>
+        <div id="aiMathPreview" class="ai-math-preview hidden">
+          <div class="ai-math-preview-h">公式预览</div>
+          <div class="ai-math-preview-body"></div>
+        </div>
+        <div id="aiInputBox" class="ai-input-box">
+          <textarea id="aiInput" rows="1" placeholder="输入消息…"></textarea>
+          <div class="ai-input-toolbar">
+            <div class="ai-tl">
+              <button id="aiImgBtn" class="ai-round-btn" title="上传图片" aria-label="上传图片">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <input id="aiImgInput" type="file" accept="image/*" multiple hidden />
+            </div>
+            <div class="ai-tr">
+              <button id="aiSend" class="ai-send" title="发送" aria-label="发送" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="aiDropOverlay" class="ai-drop-overlay hidden">
+        <div class="ai-drop-title">添加文件</div>
+        <div class="ai-drop-sub">拖放任意文件到此处上传</div>
+      </div>
+    </section>
+    <aside id="aiArtifact" class="ai-col ai-artifact-col hidden">
+      <div class="ai-artifact-head">
+        <span id="aiArtifactName">预览</span>
+        <span class="spacer"></span>
+        <button id="aiArtifactCopy" class="ai-icon-btn" title="复制源码">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        </button>
+        <button id="aiArtifactDownload" class="ai-icon-btn" title="下载">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        </button>
+        <button id="aiArtifactClose" class="ai-icon-btn" title="关闭预览">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <iframe id="aiArtifactFrame" class="ai-artifact-frame" sandbox="allow-scripts" title="预览"></iframe>
+      <div id="aiEditorBox" class="ai-editor hidden">
+        <div class="ai-editor-tools">
+          <label class="ai-ed-color" title="画笔颜色">
+            <input type="color" id="aiEdColor" value="#e74c3c">
+          </label>
+          <div class="ai-ed-sizes" title="笔触大小">
+            <button class="ai-ed-size" data-size="3" title="细"><span style="width:4px;height:4px"></span></button>
+            <button class="ai-ed-size on" data-size="6" title="中"><span style="width:8px;height:8px"></span></button>
+            <button class="ai-ed-size" data-size="12" title="粗"><span style="width:13px;height:13px"></span></button>
+            <button class="ai-ed-size" data-size="22" title="特粗"><span style="width:20px;height:20px"></span></button>
+          </div>
+          <span class="ai-ed-sep"></span>
+          <button class="ai-ed-tool on" data-tool="brush" title="画笔：遮盖原图">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4"/><path d="M13 7 8.7 2.7a2.41 2.41 0 0 0-3.4 0L2.7 5.3a2.41 2.41 0 0 0 0 3.4L7 13"/><path d="m8 6 2-2"/><path d="m18 16 2-2"/><path d="m17 11 4.3 4.3c.94.94.94 2.46 0 3.4l-2.6 2.6c-.94.94-2.46.94-3.4 0L11 17"/></svg>
+          </button>
+          <button class="ai-ed-tool" data-tool="highlight" title="高亮笔：照亮混合，不遮盖原图">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4l8 8Z"/></svg>
+          </button>
+          <button class="ai-ed-tool" data-tool="eraser" title="橡皮擦：只擦除笔迹">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+          </button>
+          <span class="flex-spacer"></span>
+          <button id="aiEdSave" class="primary">保存标注</button>
+        </div>
+        <div class="ai-editor-stage" id="aiEdStage">
+          <img id="aiEdImg" alt="">
+          <canvas id="aiEdHi"></canvas>
+          <canvas id="aiEdStroke"></canvas>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div id="aiToast" class="ai-toast hidden"></div>
+  <div id="aiLightbox" class="ai-lightbox hidden">
+    <button id="aiLightboxClose" title="关闭" aria-label="关闭">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+    <button id="aiLightboxDownload" title="下载图片" aria-label="下载图片">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+    </button>
+    <img id="aiLightboxImg" alt="" />
+  </div>
+  <div id="aiConfirmOverlay" class="ai-confirm-overlay hidden">
+    <div class="ai-confirm">
+      <div id="aiConfirmTitle" class="ai-confirm-title">删除？</div>
+      <div id="aiConfirmBody" class="ai-confirm-body"></div>
+      <div class="ai-confirm-btns">
+        <button id="aiConfirmCancel">取消</button>
+        <button id="aiConfirmOk">删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+  <video id="carrierVideo" playsinline></video>
+  <div id="carrierYtWrap"></div>
+</div>
+<div id="queuePanel" class="queue-panel hidden">
+  <div class="queue-head">
+    <span>存档队列</span>
+    <span class="spacer"></span>
+    <button id="queueClose" class="ghost" title="关闭">✕</button>
+  </div>
+  <div id="queueBody" class="queue-body"></div>
+</div>
+<div id="settingsOverlay" class="settings hidden">
+  <div class="settings-panel">
+    <div class="settings-head">
+      <span>设置</span>
+      <span class="spacer"></span>
+      <button id="settingsClose" class="ghost">✕ 关闭</button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-tabs">
+        <button data-tab="token">访问令牌</button>
+        <button data-tab="sources" class="active">订阅源</button>
+        <button data-tab="edit-source">设置源</button>
+        <button data-tab="del-source">删除源</button>
+        <button data-tab="ai">AI 服务</button>
+        <button data-tab="embedding">向量模型</button>
+        <button data-tab="translate">翻译</button>
+        <button data-tab="reddit">Reddit 接入</button>
+        <button data-tab="bilibili">Bilibili 接入</button>
+      </div>
+      <div class="settings-pages">
+        <div id="tab-token" class="settings-page">
+          <p class="settings-hint">访问令牌 = 公网部署时的访问口令（与服务端环境变量 DA_AUTH_TOKEN 匹配）。设置后，本浏览器访问所有接口都会自动携带；留空表示无需令牌（本机/局域网使用）。局域网内使用无需设置；公网暴露时请务必在服务端设置 DA_AUTH_TOKEN 并在此填入相同值。</p>
+          <label>访问令牌 <input id="tokenInput" type="password" placeholder="留空 = 无令牌"></label>
+          <button id="saveTokenBtn" class="primary">保存令牌</button>
+        </div>
+        <div id="tab-sources" class="settings-page">
+          <p class="settings-hint">新订阅将添加到当前工作区；颜色、抓取与删除可在左侧源列表直接操作。</p>
+          <form id="sourceForm">
+            <label>类型
+              <select id="srcType">
+                <option value="rss">RSS</option>
+                <option value="arxiv">arXiv</option>
+                <option value="reddit">Reddit</option>
+                <option value="youtube">YouTube</option>
+                <option value="bilibili">Bilibili</option>
+              </select>
+            </label>
+            <label>名称 <input id="srcName" required placeholder="如：机器学习前沿"></label>
+            <label>地址 <input id="srcUrl" placeholder="RSS 链接（arXiv/Reddit/YouTube/Bilibili 可留空）"></label>
+            <div id="arxivCfg" class="hidden">
+              <label>分类（逗号分隔）<input id="srcCats" placeholder="cs.AI, cs.CL"></label>
+              <label>每次条数 <input id="srcMax" type="number" value="50" min="1" max="200"></label>
+            </div>
+            <div id="redditCfg" class="hidden">
+              <label>Subreddit（逗号分隔）<input id="srcSubs" placeholder="localllama, unity"></label>
+            </div>
+            <div id="ytCfg" class="hidden">
+              <label>频道链接或 ID <input id="srcChannel" placeholder="https://www.youtube.com/@GDCFestivalofGaming 或 UC..."></label>
+            </div>
+            <div id="biliCfg" class="hidden">
+              <label>空间链接或 UID <input id="srcBiliChannel" placeholder="https://space.bilibili.com/35868098"></label>
+            </div>
+            <label>源颜色 <input id="srcColor" type="color" value="#6c63ff"></label>
+            <label class="chk-line">
+              <input id="srcArchiveEn" type="checkbox" checked> 允许存原文
+            </label>
+            <label class="chk-line">
+              <input id="srcMd" type="checkbox"> HTML 存档改用 AI 生成纯净 Markdown（需在「AI 服务」中配置）
+            </label>
+            <label class="chk-line">
+              <input id="srcAllowUpload" type="checkbox"> 允许手动上传存档文件（覆盖已有存档，默认关闭）
+            </label>
+            <label>抓取间隔（分钟）<input id="srcInterval" type="number" value="60" min="5"></label>
+            <button type="submit" class="primary">订阅</button>
+          </form>
+        </div>
+        <div id="tab-edit-source" class="settings-page hidden">
+          <p class="settings-hint">选择一个已订阅的源进行单独设置（颜色、抓取与删除也可在左侧源列表直接操作）：</p>
+          <label>已订阅源
+            <select id="editSourceSel"><option value="">— 选择源 —</option></select>
+          </label>
+          <div id="editSourceForm" class="hidden">
+            <label>名称 <input id="editName"></label>
+            <label>地址 <input id="editUrl"></label>
+            <div id="editRedditCfg" class="hidden">
+              <label>Subreddit（逗号分隔）<input id="editSubs"></label>
+            </div>
+            <div class="field-row">
+              <label>抓取间隔（分钟）<input id="editInterval" type="number" min="5"></label>
+              <label>源颜色 <input id="editColor" type="color" value="#6c63ff"></label>
+            </div>
+            <label class="chk-line"><input id="editArchiveEn" type="checkbox" checked> 允许存原文</label>
+            <label class="chk-line"><input id="editArchiveMd" type="checkbox"> HTML 存档改用 AI 生成纯净 Markdown（需在「AI 服务」中配置）</label>
+            <label class="chk-line"><input id="editAllowUpload" type="checkbox"> 允许手动上传存档文件（覆盖已有存档）</label>
+            <button id="editSaveBtn" class="primary">保存源设置</button>
+          </div>
+        </div>
+        <div id="tab-del-source" class="settings-page hidden">
+          <p class="settings-hint">删除订阅将同时删除其全部条目与存档文件，且不可恢复。请先在下方选择要删除的订阅源。</p>
+          <label>已订阅源
+            <select id="delSourceSel"><option value="">— 选择源 —</option></select>
+          </label>
+          <button id="delSourceBtn" class="danger">删除选定的订阅源</button>
+        </div>
+        <div id="tab-ai" class="settings-page hidden">
+          <p class="settings-hint">用于后续版本的网页内容 AI 摘要。兼容所有 OpenAI 格式端点（DeepSeek / OpenRouter / 本地部署等），选择服务商会自动填充 Base URL。</p>
+          <label>服务商
+            <select id="aiProvider">
+              <option value="deepseek">DeepSeek</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="local">本地部署（OpenAI 兼容）</option>
+              <option value="custom">自定义</option>
+            </select>
+          </label>
+          <label>Base URL <input id="aiBaseUrl" placeholder="https://api.deepseek.com/v1"></label>
+          <label>API Key <input id="aiApiKey" type="password" placeholder="sk-..."></label>
+          <label>模型 <input id="aiModel" placeholder="deepseek-chat"></label>
+          <button id="saveAiBtn" class="primary">保存 AI 服务设置</button>
+        </div>
+        <div id="tab-embedding" class="settings-page hidden">
+          <p class="settings-hint">当前仅支持 Qwen3-Embedding-0.6B（1024 维）。保存后即时热生效；更换提供方式或端点不影响已生成的向量，更换模型标识将触发全量重嵌入。</p>
+          <label>提供方式
+            <select id="embProvider">
+              <option value="local">本地 ONNX 运行（离线）</option>
+              <option value="api">远程 OpenAI 兼容端点</option>
+            </select>
+          </label>
+          <div id="embLocalFields">
+            <label>模型目录（留空 = 使用镜像内置 /model）<input id="embLocalPath" placeholder="/model"></label>
+            <label>计算设备
+              <select id="embDevice">
+                <option value="cpu">CPU</option>
+                <option value="directml">DirectML（Windows GPU/NPU，需 onnxruntime-directml）</option>
+                <option value="cuda">CUDA（NVIDIA，需 GPU 版 onnxruntime）</option>
+              </select>
+            </label>
+          </div>
+          <div id="embApiFields" class="hidden">
+            <label>端点 Base URL <input id="embApiBase" placeholder="https://api.siliconflow.cn/v1"></label>
+            <label>API Key <input id="embApiKey" type="password"></label>
+          </div>
+          <label>模型标识 <input id="embModel" value="Qwen/Qwen3-Embedding-0.6B"></label>
+          <button id="saveEmbBtn" class="primary">保存向量设置</button>
+        </div>
+        <div id="tab-translate" class="settings-page hidden">
+          <p class="settings-hint">开启后自动翻译 Feed 卡片与详情摘要（译文在上、原文变暗）。目标语言在顶栏「🌐 翻译」菜单里选择。</p>
+          <label>提供方式
+            <select id="transProvider">
+              <option value="none">无翻译（用浏览器自带翻译）</option>
+              <option value="cloud">云端免费翻译</option>
+              <option value="api">翻译 API（自定义接入）</option>
+            </select>
+          </label>
+          <div id="transCloudFields">
+            <label>云端引擎
+              <select id="transCloudEngine">
+                <option value="google">Google 翻译（免费直连）</option>
+                <option value="mymemory">MyMemory（免费直连）</option>
+              </select>
+            </label>
+          </div>
+          <div id="transApiFields" class="hidden">
+            <label>接口类型
+              <select id="transApiType">
+                <option value="openai">OpenAI 兼容（LLM 翻译，本地/远程推理服务均可）</option>
+                <option value="deepl">DeepL</option>
+                <option value="baidu">百度翻译开放平台</option>
+                <option value="tencent">腾讯云机器翻译（TMT）</option>
+                <option value="volc">火山翻译（火山引擎）</option>
+                <option value="aliyun">阿里云机器翻译</option>
+              </select>
+            </label>
+            <div id="transApiOpenaiFields">
+              <label>API 端点 Base URL <input id="transApiUrl" placeholder="http://127.0.0.1:54401/v1"></label>
+              <label>模型 <input id="transApiModel" placeholder="翻译模型名"></label>
+              <label>API Key（可选） <input id="transApiKey" type="password"></label>
+            </div>
+            <div id="transApiKeyOnly" class="hidden">
+              <label>鉴权 Key <input id="transApiSecret" type="password" placeholder="DeepL: 以 :fx 结尾为免费版"></label>
+            </div>
+            <div id="transApiIdKey" class="hidden">
+              <label>ID / AccessKey <input id="transApiId"></label>
+              <label>Secret <input id="transApiSecret" type="password"></label>
+              <label>地域（火山/阿里，默认 cn-north-1）<input id="transApiRegion" placeholder="cn-north-1"></label>
+            </div>
+          </div>
+          <button id="transTestBtn" class="ghost">测试连接</button>
+          <span id="transTestOut" class="settings-hint"></span>
+          <button id="saveTransBtn" class="primary">保存翻译设置</button>
+        </div>
+        <div id="tab-reddit" class="settings-page hidden">
+          <p class="settings-hint">Reddit 应用凭据（client_credentials 只读授权，用于抓取公开帖子与热门评论）。在 reddit.com/prefs/apps 创建应用后填写。</p>
+          <label>Client ID <input id="redditClientId" placeholder="应用名称下方的字符串"></label>
+          <label>Client Secret <input id="redditClientSecret" type="password"></label>
+          <button id="saveRedditBtn" class="primary">保存 Reddit 凭据</button>
+        </div>
+        </div>
+        <div id="tab-bilibili" class="settings-page hidden">
+          <p class="settings-hint">点击按钮生成二维码，用 B站 App「扫一扫」确认，登录凭据自动保存（规避 -352 风控）。</p>
+          <button id="biliQrBtn" class="primary">扫码登录 Bilibili</button>
+          <div id="biliQrBox" class="hidden">
+            <div id="biliQrWrap" style="position:relative;display:inline-block">
+              <div id="biliQrImg" style="background:#fff;padding:8px;border-radius:8px"></div>
+              <div id="biliQrOverlay" class="hidden">✓ 登录成功</div>
+            </div>
+            <p id="biliQrStatus" class="settings-hint">等待扫码…（B站 App → 扫一扫，约 3 分钟有效）</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="vendor/qrcode.min.js"></script>
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<script src="vendor/highlight.min.js"></script>
+<link rel="stylesheet" href="vendor/highlight-github-dark.min.css" />
+<link rel="stylesheet" href="vendor/katex/katex.min.css" />
+<script defer src="vendor/katex/katex.min.js"></script>
+<script defer src="vendor/katex/auto-render.min.js"></script>
+<script src="vendor/mermaid.min.js"></script>
+<script src="app.js?v=20261005a"></script>
+</body>
+</html>

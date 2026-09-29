@@ -1,0 +1,19 @@
+services:
+  deepaggregator:
+    build: .
+    image: zsydeepsky/deepaggregator:latest
+    container_name: deepaggregator
+    ports:
+      - "57577:8080"
+    environment:
+      DA_DATA_DIR: /data
+      DA_AUTH_TOKEN: ${DA_AUTH_TOKEN:-}
+      HF_ENDPOINT: ${HF_ENDPOINT:-https://hf-mirror.com}
+      DA_EMBEDDING_PROVIDER: ${DA_EMBEDDING_PROVIDER:-local}
+      DA_EMBEDDING_MODEL: ${DA_EMBEDDING_MODEL:-Qwen/Qwen3-Embedding-0.6B}
+      DA_EMBEDDING_API_BASE: ${DA_EMBEDDING_API_BASE:-}
+      DA_EMBEDDING_API_KEY: ${DA_EMBEDDING_API_KEY:-}
+    volumes:
+      - ./workspace:/data
+      - ./app:/app/app  # 开发热更：宿主机 app/ 直挂容器（ADR-18 热更循环）
+    restart: unless-stopped

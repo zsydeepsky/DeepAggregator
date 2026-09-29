@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+workspace/
+docker_image/*.tar
+docker_image/*.tar.gz
+model-cache/
+.env
+.pytest_cache/
+.ruff_cache/
+.pytest_tmp/
+*.db
+*.db-wal
+*.db-shm
